@@ -20,6 +20,19 @@ class UserCredentials(BaseModel):
     username: str
     password: str
 
+class UserSession(BaseModel):
+    session: str
+
+class Quote(BaseModel):
+    id: str
+    text: str 
+    author: str
+    user_session: str
+
+class QuoteDelete(BaseModel):
+    id: str
+    user_session: str
+
 app = FastAPI()
 
 origins = [
@@ -46,6 +59,15 @@ async def register_user(credentials: UserCredentials):
     else:
         return {"code": 1, "data": {"reason": "Account already exists"}}
 
+@app.post("/api/confirm-login")
+async def confirm_login(credentials: UserSession):
+    user = app_col.find_one({"session": credentials.session})
+
+    if user is None:
+        return {"code": 1, "data": {"reason": "Session not registered"}}
+    else: 
+        return {"code": 0, "data": {}}
+    
 @app.post("/api/login")
 async def login_user(credentials: UserCredentials):
     user = app_col.find_one({"username": credentials.username})
@@ -60,6 +82,42 @@ async def login_user(credentials: UserCredentials):
         app_col.update_one({"username": credentials.username}, {"$set": {"session": cookie}})
         print(f"User {credentials.username} was given the cookie {cookie}")
         return {"data": { "account": cookie }, "code": 0}
+    
+@app.get("/api/quotes")
+async def get_quotes(session: str):
+    user = app_col.find_one({"session": session})
+
+    if user is None or "quotes" not in user:
+        return {"code": 0, "data": {}}
+
+    return {"code": 0, "data": {"quotes": user.get("quotes")}}
+
+@app.put("/api/quotes")
+async def put_quotes(quote: Quote):
+    app_col.update_one(
+        {"session": quote.user_session}, 
+        {"$push": {
+            "quotes": {
+                "$each": [{"id": quote.id, "text": quote.text, "author": quote.author}],  
+                "$position": 0           
+            }
+        }})
+
+    return {"code": 0, "data": []}
+
+
+@app.delete("/api/quotes")
+async def delete_quotes(quote: QuoteDelete):
+    app_col.update_one(
+        {"session": quote.user_session}, 
+        {"$pull": {
+            "quotes": {
+                "id": quote.id          
+            }
+        }})
+    
+    return {"code": 0, "data": []}
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
