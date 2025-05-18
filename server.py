@@ -83,6 +83,19 @@ async def login_user(credentials: UserCredentials):
         print(f"User {credentials.username} was given the cookie {cookie}")
         return {"data": { "account": cookie }, "code": 0}
     
+@app.post("/api/logout")
+async def logout_user(credentials: UserSession):
+    app_col.update_one(
+        {"session": credentials.session},
+        {
+            "$unset": {
+                "session": ""
+            }
+        }
+    )
+
+    return {"code": 0, "data": []}
+    
 @app.get("/api/quotes")
 async def get_quotes(session: str):
     user = app_col.find_one({"session": session})
