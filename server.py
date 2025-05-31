@@ -53,6 +53,11 @@ class ExperienceEdit(BaseModel):
     notes: str
     user_session: str
 
+def generate_random_string(length=10):
+    characters = string.ascii_letters + string.digits
+    random_string = ''.join(random.choices(characters, k=length))
+    return random_string
+
 app = FastAPI()
 
 origins = [
@@ -210,9 +215,3 @@ async def edit_experiences(experience: ExperienceEdit):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
-
-
-def generate_random_string(length=10):
-    characters = string.ascii_letters + string.digits
-    random_string = ''.join(random.choices(characters, k=length))
-    return random_string
