@@ -33,6 +33,26 @@ class QuoteDelete(BaseModel):
     id: str
     user_session: str
 
+class Experience(BaseModel):
+    id: str
+    text: str 
+    category: str
+    tried: bool
+    dateTried: str 
+    notes: str
+    user_session: str
+
+class ExperienceDelete(BaseModel):
+    id: str
+    user_session: str
+
+class ExperienceEdit(BaseModel):
+    id: str
+    tried: bool
+    dateTried: str 
+    notes: str
+    user_session: str
+
 app = FastAPI()
 
 origins = [
@@ -118,7 +138,6 @@ async def put_quotes(quote: Quote):
 
     return {"code": 0, "data": []}
 
-
 @app.delete("/api/quotes")
 async def delete_quotes(quote: QuoteDelete):
     app_col.update_one(
@@ -131,6 +150,63 @@ async def delete_quotes(quote: QuoteDelete):
     
     return {"code": 0, "data": []}
 
+@app.get("/api/experiences")
+async def get_experiences(session: str):
+    user = app_col.find_one({"session": session})
+
+    if user is None or "experiences" not in user:
+        return {"code": 0, "data": {}}
+
+    return {"code": 0, "data": {"experiences": user.get("experiences")}}
+
+@app.post("/api/experiences")
+async def post_experiences(experience: Experience):
+    app_col.update_one(
+        {"session": experience.user_session}, 
+        {"$push": {
+            "experiences": {
+                "$each": [{
+                    "id": experience.id, 
+                    "text": experience.text, 
+                    "category": experience.category,
+                    "tried": experience.tried,
+                    "dateTried": experience.dateTried,
+                    "notes": experience.notes
+                    }],  
+                "$position": 0           
+            }
+        }})
+
+    return {"code": 0, "data": []}
+
+@app.delete("/api/experiences")
+async def delete_experiences(quote: ExperienceDelete):
+    app_col.update_one(
+        {"session": quote.user_session}, 
+        {"$pull": {
+            "experiences": {
+                "id": quote.id          
+            }
+        }})
+    
+    return {"code": 0, "data": []}
+
+
+@app.put("/api/experiences")
+async def edit_experiences(experience: ExperienceEdit):
+    app_col.update_one(
+        {"session": experience.user_session},
+        {
+            "$set": {
+                "experiences.$[experience].tried": experience.tried,
+                "experiences.$[experience].dateTried": experience.dateTried,
+                "experiences.$[experience].notes": experience.notes,
+            },
+        },
+        array_filters=[{"experience.id": experience.id}]
+    )
+
+    return {"code": 0, "data": []}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
